@@ -1,4 +1,4 @@
-# Static Analyzer with LLMs for Undefined Behavior
+# Static Analyzer Enhanced with LLMs for Undefined Behavior Sanitization
 
 ## Overview
 
