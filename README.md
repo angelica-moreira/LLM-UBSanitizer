@@ -17,7 +17,7 @@ The process consists of the following steps:
 
 ## Flowchart
 
-![Process Flowchart](images/flowchart.png)
+![Process Flowchart](images/flowchart.jpeg)
 
 ## Installation
 
