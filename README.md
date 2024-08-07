@@ -4,6 +4,21 @@
 
 This project provides a static analysis tool that detects and addresses undefined behavior (UB) in programs. The tool utilizes Large Language Models (LLMs) to enhance traditional static analysis, offering suggestions and validating fixes using LLVM tools.
 
+## Benchmark Description
+
+The benchmark utilized in this project consists of a comprehensive set of 364,122 compilable Linux kernel functions. This benchmark was meticulously curated, drawing inspiration from the [AnghaBench project](https://lac-dcc.github.io/pubs/TechReports/LaC_TechReport012020.pdf). Leveraging the artifacts from the associated paper, a function extractor and type inference engine were employed to generate compilable single-function files. These files maintain the original directory structure of the Linux kernel repository, ensuring a close resemblance to the source.
+
+The Linux kernel was chosen for this benchmark due to its complexity and the profound impact that addressing undefined behavior (UB) can have. In C and C++ programming, undefined behavior arises when the language standards do not specify the outcome, leading to unpredictable and often problematic results. UB is a critical concern as it frequently underlies numerous bugs and vulnerabilities in software systems.
+
+Potential consequences of undefined behavior include:
+
+> - **Compiler Variability**: Programs may exhibit different behaviors when compiled with various compilers, compiler versions, or optimization settings.
+> - **Security Vulnerabilities**: UB can create vulnerabilities, exposing software to potential exploits.
+> - **Unexpected Termination**: Programs may terminate abruptly or enter infinite loops.
+> - **Incorrect Outputs**: Programs may generate incorrect or nonsensical results.
+
+By concentrating on the Linux kernel, this exploration seeks to identify, propose fixes for, and mitigate undefined behavior, ultimately enhancing the reliability and security of C and C++ software systems.
+
 ## Process Flow
 
 The process consists of the following steps:
