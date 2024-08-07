@@ -5,13 +5,9 @@ timestamp() {
 	date +"%Y-%m-%d__%H:%M:%S"
 }
 
-# Default path
-default_path="/path/to/default/directory"
+default_path="$(pwd)/linux"
 
-# Use the provided path or fall back to the default path
 bench_path=${1:-$default_path}
-
-# Check if the bench_path exists
 bench_path=$(readlink -f $1)
 if [ ! -d "$bench_path" ]; then
     echo "Error: Directory '$bench_path' does not exist."

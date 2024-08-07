@@ -19,6 +19,15 @@ Potential consequences of undefined behavior include:
 
 By concentrating on the Linux kernel, this exploration seeks to identify, propose fixes for, and mitigate undefined behavior, ultimately enhancing the reliability and security of C and C++ software systems.
 
+### Compile Script
+
+The `compile.sh` script is provided to compile the benchmark and generate the artifacts described in the flowchart as Path1.
+
+To use the script, run:
+
+```bash
+./compile.sh [source_dir]
+
 ## Process Flow
 
 The process consists of the following steps:
