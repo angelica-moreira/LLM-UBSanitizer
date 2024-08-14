@@ -43,6 +43,13 @@ To use the script, run:
 ```bash
 ./compile.sh [source_dir]
 ````
+## Required Dependencies for Running LLM-UBSanitizer
+
+- **GenAI Script**
+- **LLVM**
+- **Clang**
+- **Frama-C with Eva plugin**
+- **Alive2**
 
 ## Installation
 
