@@ -45,11 +45,11 @@ To use the script, run:
 ````
 ## Required Dependencies for Running LLM-UBSanitizer
 
-- **GenAI Script**
-- **LLVM**
-- **Clang**
-- **Frama-C with Eva plugin**
-- **Alive2**
+- **[GenAI Script](https://microsoft.github.io/genaiscript/getting-started/installation/)**
+- **[LLVM](https://llvm.org/docs/GettingStarted.html#quick-start)**
+- **[Clang](https://clang.llvm.org/get_started.html)**
+- **[Frama-C with Eva plugin](https://frama-c.com/html/get-frama-c.html)**
+- **[Alive2](https://github.com/AliveToolkit/alive2#building-alive2)**
 
 ## Installation
 
