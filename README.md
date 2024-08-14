@@ -50,6 +50,7 @@ To use the script, run:
 - **[Clang](https://clang.llvm.org/get_started.html)**
 - **[Frama-C with Eva plugin](https://frama-c.com/html/get-frama-c.html)**
 - **[Alive2](https://github.com/AliveToolkit/alive2#building-alive2)**
+- **[Ollama](https://ollama.com/)**
 
 ## Installation
 
