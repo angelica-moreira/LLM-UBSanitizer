@@ -45,7 +45,7 @@ for f in $files; do
 	fi
 
 	echo ${function_name}
-	frama-c -eva -main ${function_name} ${f} &> "${dir}/${no_ext}_frama.log"
+	frama-c -eva -main ${function_name} ${f} &> "${dir}/${no_ext}_frama_report.log"
 
 	res=$?
 
