@@ -41,7 +41,7 @@ The `compile.sh` script is provided to compile the benchmark and generate the ar
 To use the script, run:
 
 ```bash
-./compile.sh [source_dir]
+bash compile.sh [source_dir]
 ````
 ## Required Dependencies for Running LLM-UBSanitizer
 
