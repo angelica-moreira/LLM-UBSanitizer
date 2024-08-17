@@ -84,6 +84,16 @@ compile_and_gen_llvm_ir "$f" "$cc" "$dir"
 # Run Frama-C analysis if the file
 run_frama_c_analysis "$f" "$function_name" "$dir"
 
+# Starting the npx command in the background and save the PID
+npx --yes genaiscript@1.49.1 serve &
+PID=$!
+
+# Waiting for a few seconds to ensure the server starts up properly
+sleep 10
+
+# Perform other tasks here
+echo "GenAI Server is running with PID $PID"
+
 # Run UBSanitizer with genaiscript
 echo "$(timestamp) Running UBSanitizer with genaiscript on $f"
 npx genaiscript run $(pwd)/genaisrc/UBSsanitizer.genai.mjs "$f" --no-cache
@@ -107,5 +117,11 @@ else
   echo "$(timestamp) INFO: No fixed file found for $base."
 fi
 
+PID=$(lsof -t -i:8003)
+if [ -n "$PID" ]; then
+  kill -9 $PID
+  echo "Killed process $PID using port 8003"
+fi
 
-
+kill $PID
+echo "GenAI Server with PID $PID has been terminated"

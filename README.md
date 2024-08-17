@@ -55,3 +55,7 @@ To use the script, run:
 ## Installation
 
 To get started with the project, clone this repository and follow the instructions below.
+
+```bash
+bash analysis.sh  [source_code_with_path]
+```
