@@ -3,8 +3,9 @@ import json
 import subprocess
 import re
 
-from dotenv import load_dotenv
-load_dotenv()
+from dotenv import load_dotenv, find_dotenv
+env_file = find_dotenv(".env")
+load_dotenv(env_file)
 
 from openai import AzureOpenAI
 client = AzureOpenAI(
@@ -220,6 +221,7 @@ def analyze_and_fix_code(file_path):
     emit_llvm_ir(fixed_file_path, fixed_ir_file)
 
 if __name__ == "__main__":
-    file_path = input("Enter the path to the source code file: ")
+    file_path = os.path.abspath(input("Enter the path to the source code file: "))
+    print(f"Absolute source code path: {file_path}")
     analyze_and_fix_code(file_path)
 
