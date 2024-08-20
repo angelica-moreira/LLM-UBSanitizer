@@ -42,9 +42,11 @@ def emit_llvm_ir(source_file, output_file):
     try:
         subprocess.run(
             [
+                "scan-build",
                 compiler,
                 "-S",
                 "-emit-llvm",
+                "-fsanitize=address",
                 "-std=c11" if compiler == "clang" else "-std=c++17",
                 source_file,
                 "-o",
@@ -183,7 +185,7 @@ def analyze_and_fix_code(file_path):
 
     base_file_name = os.path.splitext(file_path)[0]
 
-    # Step 1: Emit LLVM-IR from the original source code
+    # Step 1: Emit LLVM-IR from the original source code and scan the code
     original_ir_file = f"{base_file_name}.ll"
     emit_llvm_ir(file_path, original_ir_file)
 
@@ -216,7 +218,7 @@ def analyze_and_fix_code(file_path):
         fixed_file.write(fixed_code)
     print(f"Fixed code has been saved to {fixed_file_path}")
 
-    # Step 8: Emit LLVM-IR from the fixed source code
+    # Step 8: Emit LLVM-IR from the fixed source code and scan the code
     fixed_ir_file = f"{base_file_name}_fixed.ll"
     emit_llvm_ir(fixed_file_path, fixed_ir_file)
 

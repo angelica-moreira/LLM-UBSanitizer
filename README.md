@@ -45,12 +45,9 @@ bash compile.sh [source_dir]
 ````
 ## Required Dependencies for Running LLM-UBSanitizer
 
-- **[GenAI Script](https://microsoft.github.io/genaiscript/getting-started/installation/)**
 - **[LLVM](https://llvm.org/docs/GettingStarted.html#quick-start)**
-- **[Clang](https://clang.llvm.org/get_started.html)**
-- **[Frama-C with Eva plugin](https://frama-c.com/html/get-frama-c.html)**
+- **[Clang and Clang tools](https://clang.llvm.org/get_started.html)**
 - **[Alive2](https://github.com/AliveToolkit/alive2#building-alive2)**
-- **[Ollama](https://ollama.com/)**
 
 ## Installation
 
