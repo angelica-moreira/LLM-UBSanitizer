@@ -33,7 +33,7 @@ for f in $files; do
 
 	echo "$(timestamp) Attempting to compile file: $base. Number of bytes: $size"
 
-	$cc $f -S -emit-llvm -c -Xclang -disable-O0-optnone -Wall -Wextra -Wpedantic -std=c11 -o "${dir}/${no_ext}.ll" 2>> "${dir}/${no_ext}_clang.log"
+ 	scan-build $cc $f -S -emit-llvm -c -Xclang -disable-O0-optnone -Wall -Wextra -Wpedantic -std=c11 -o "${dir}/${no_ext}.ll" 2>> "${dir}/${no_ext}_clang.log"
 	
 	res=$?
 
@@ -44,17 +44,6 @@ for f in $files; do
 		echo "${base},${size},SUCCESS LLVM IR" | tee "${dir}/${no_ext}_llvm_ir.log" 
 	fi
 
-	echo ${function_name}
-	frama-c -eva -main ${function_name} ${f} &> "${dir}/${no_ext}_frama_report.log"
-
-	res=$?
-
-	if [[ $res != 0 ]]
-	then
-		echo "${base},${size},FAIL FRAMA" | tee "${dir}/${no_ext}_frama_eva.log"
-	else
-		echo "${base},${size},SUCCESS FRAMA" | tee "${dir}/${no_ext}_frama_eva.log" 
-	fi
 done
 
 echo "$(timestamp) ----- FINISHED COMPILATION -----"

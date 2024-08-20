@@ -49,10 +49,10 @@ bash compile.sh [source_dir]
 - **[Clang and Clang tools](https://clang.llvm.org/get_started.html)**
 - **[Alive2](https://github.com/AliveToolkit/alive2#building-alive2)**
 
-## Installation
+## Execution
 
 To get started with the project, clone this repository and follow the instructions below.
 
 ```bash
-bash analysis.sh  [source_code_with_path]
+python3 analizer.py
 ```
