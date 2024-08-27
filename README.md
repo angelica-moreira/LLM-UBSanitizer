@@ -54,5 +54,5 @@ bash compile.sh [source_dir]
 To get started with the project, clone this repository and follow the instructions below.
 
 ```bash
-python3 analizer.py
+python3 analyzer.py
 ```
