@@ -3,3 +3,4 @@ retrieval/
 containers/
 temp/
 tests/
+.env

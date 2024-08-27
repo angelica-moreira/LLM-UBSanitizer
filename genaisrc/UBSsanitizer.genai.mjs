@@ -83,6 +83,148 @@ script({
     }
   );
 
+  defTool(
+    "GET_ABSOLUTE_PATH",
+    "Return the absolute path of a file",{
+      type: "object",
+      properties: {
+        inputFile: {
+          type: "object",
+          description: "The file we want to extract the path.",
+          properties: {
+            inputFileName: {
+              type: "string",
+              description:
+                "The file name",
+            },
+            inputPath: {
+                type: "string",
+                description:
+                  "The relative path",
+              },
+          },
+          required: ["inputFileName"],
+        },
+      },
+      required: ["inputFile"],
+    }, 
+    async (params) => {
+      const { inputFile } = params;
+      const absPath = await path.resolve(inputFile.inputPath);
+      return absPath;
+    }
+  );
+
+  defTool(
+    "C_CPP_COMPILER",
+    "Compiles C and C++ files using the clang and clang++ compilers. This tool is\
+       deterministic, always return the same output for the same input.",
+    {
+      type: "object",
+      properties: {
+        sourcecode: {
+          type: "object",
+          properties: {
+            content: {
+              type: "string",
+              description: "The input source code to compile.",
+            },
+            inputFileName: {
+              type: "string",
+              description:
+                "The input source code to be compiled",
+            },          
+            inputFilePath: {
+              type: "string",
+              description:
+                "The path of the input source code to be compiled",
+            },
+          },
+          required: ["content", "inputFileName", "inputFilePath"],
+        },
+      },
+      required: ["sourcecode"],
+    },
+    async (params) => {
+      const { sourcecode } = params;
+      const sourcefilename = path.basename(sourcecode.inputFileName);
+  
+      // Ensure sourcefilename is defined
+      if (!sourcecode || !sourcefilename) {
+        throw new Error("Filename not defined.");
+      }
+  
+      const extension = path.extname(sourcefilename);
+      const fileNameWithoutExtension = path.basename(
+        sourcecode.inputFileName,
+        extension
+      );
+  
+      let compiler, std;
+      if (extension === ".c") {
+        compiler = "clang";
+        std = "-std=c11";
+      } else if (extension === ".cpp") {
+        compiler = "clang++";
+        std = "-std=c++11";
+      } else {
+        throw new Error("Unsupported file type.");
+      }
+  
+      // const fn = await workspace.readText(sourcecode.filename);
+      const sourceFilePath = await path.join(sourcecode.inputFilePath, sourcecode.inputFileName);
+      const dir = await path.resolve(path.join(sourcecode.inputFilePath, "tmp","ir"));
+      const out = `${dir}/${fileNameWithoutExtension}.ll`;
+      await workspace.writeText(out, " ");
+      const args = [
+        sourceFilePath,
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        std,
+        "-c",
+        "-S",
+        "-emit-llvm",
+        "-o",
+        out,
+      ];
+      const result = await host.exec(compiler, args);
+      return `${result.stderr || ""}`;
+    }
+  );
+
+  defTool(
+    "CHECK_FILE_EXISTIS",
+    "Check if the input path is valid.",{
+      type: "object",
+      properties: {
+        inputFile: {
+          type: "object",
+          description: "The file we want to verify if exists.",
+          properties: {
+            filename: {
+              type: "string",
+              description:
+                "The input file name with extension",
+            },          
+            filepath: {
+              type: "string",
+              description:
+                "The input file path",
+            },
+          },
+          required: ["filename", "filepath"],
+        },
+      },
+      required: ["inputFile"],
+    }, 
+    async (params) => {
+      const { inputFile } = params;
+      const dir = await path.join(inputFile.filepath, inputFile.filename);
+      const check = path.isAbsolute(path.resolve(dir)) ? "Success" : "Error";
+      return check;
+    }
+  );
 
   $`You are an expert in C/CPP programming! Execute the following tasks: \
   # Check for bugs that could lead to undefined behavior in the ${file}. If you find any, provide detailed explanations and recommendations for addressing the issue. \

@@ -187,7 +187,14 @@ interface EmbeddingsModelConnectionOptions {
     /**
      * LLM model to use for embeddings.
      */
-    embeddingsModel?: "openai:text-embedding-ada-002" | string
+    embeddingsModel?: OptionsOrString<
+        "openai:text-embedding-3-small",
+        "openai:text-embedding-3-large",
+        "openai:text-embedding-ada-002",
+        "github:text-embedding-3-small",
+        "github:text-embedding-3-large",
+        "ollama:nomic-embed-text"
+    >
 }
 
 interface EmbeddingsModelOptions extends EmbeddingsModelConnectionOptions {}
@@ -206,7 +213,7 @@ interface ScriptRuntimeOptions {
 * - `system.explanations`: Explain your answers
 * - `system.files`: File generation
 * - `system.files_schema`: Apply JSON schemas to generated data.
-* - `system.fs_find_files`: File Find Files
+* - `system.fs_find_files`: File find files
 * - `system.fs_read_file`: File Read File
 * - `system.fs_read_summary`: File Read Summary
 * - `system.functions`: use functions
@@ -227,18 +234,7 @@ interface ScriptRuntimeOptions {
     /**
      * List of tools used by the prompt.
      */
-/**
-* System tool identifiers ([reference](https://microsoft.github.io/genaiscript/reference/scripts/tools/))
-* - `fs_find_files`: Finds file matching a glob pattern.
-* - `fs_read_file`: Reads a file as text from the file system.
-* - `fs_read_summary`: Reads a summary of a file from the file system.
-* - `math_eval`: Evaluates a math expression
-* - `python_code_interpreter`: Executes python 3.12 code for Data Analysis tasks in a docker container. The process output is returned. Do not generate visualizations. The only packages available are numpy, pandas, scipy. There is NO network connectivity. Do not attempt to install other packages or make web requests.
-* - `retrieval_fuzz_search`: Search for keywords using the full text of files and a fuzzy distance.
-* - `retrieval_vector_search`: Search files using embeddings and similarity distance.
-* - `retrieval_web_search`: Search the web for a user query using Bing Search.
-**/
-    tools?: SystemToolId[]
+    tools?: SystemToolId | SystemToolId[]
 
     /**
      * Secrets required by the prompt
@@ -535,13 +531,18 @@ interface WorkspaceFileSystem {
      * Reads the content of a file as text
      * @param path
      */
-    readText(path: string | WorkspaceFile): Promise<WorkspaceFile>
+    readText(path: string | Awaitable<WorkspaceFile>): Promise<WorkspaceFile>
 
     /**
      * Reads the content of a file and parses to JSON, using the JSON5 parser.
      * @param path
      */
-    readJSON(path: string | WorkspaceFile): Promise<any>
+    readJSON(path: string | Awaitable<WorkspaceFile>): Promise<any>
+
+    /**
+     * Reads the content of a file and parses to XML, using the XML parser.
+     */
+    readXML(path: string | Awaitable<WorkspaceFile>): Promise<any>
 
     /**
      * Writes a file as text to the file system
@@ -1308,13 +1309,18 @@ interface WriteTextOptions extends ContextExpansionOptions {
     assistant?: boolean
 }
 
-type PromptGenerator = (ctx: ChatGenerationContext) => Awaitable<void>
+type PromptGenerator = (ctx: ChatGenerationContext) => Awaitable<unknown>
 
 interface PromptGeneratorOptions extends ModelOptions {
     /**
      * Label for trace
      */
     label?: string
+
+    /**
+     * List of system prompts if any
+     */
+    system?: SystemPromptId[]
 }
 
 interface FileOutputOptions {
