@@ -59,3 +59,21 @@ To get started with the project, clone this repository and follow the instructio
 ```bash
 bash analysis.sh  [source_code_with_path]
 ```
+
+## Dev scripts
+
+To install npm modules and run genaiscript locally,
+
+```sh
+npm install
+```
+
+Create a `.env` file and configure your LLM secrets.
+
+### auto git commit 
+
+Interactive script to commit files and a git commit message
+
+```sh
+npm run gcm
+```
