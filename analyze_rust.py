@@ -126,8 +126,8 @@ def rename_miri_output(source_file, base_file_name):
     """Rename the log files to include the source file name."""
     log_file = f"{base_file_name}_miri_output.log"
     stderr_log_file = f"{base_file_name}_stderr.log"
-    os.rename('stdout.log', log_file)
-    os.rename('stderr.log', stderr_log_file)
+    shutil.move('stdout.log', log_file)
+    shutil.move('stderr.log', stderr_log_file)
     logging.info(f"MIRI output saved to {stderr_log_file}.")
     return stderr_log_file
 
@@ -152,7 +152,7 @@ def run_miri(source_file, base_file_name):
         return miri_output
 
     except Exception as e:
-        logging.error(f"An error occurred while running MIRI: {e}")
+        logging.error(f"An error occurred while running MIRI: {e}", exc_info=True)
 
     finally:
         os.chdir("..")
