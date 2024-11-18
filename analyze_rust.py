@@ -70,6 +70,8 @@ def emit_llvm_ir(source_file, output_file):
         subprocess.run(
             [
                 "rustc",
+                # Ensure same crate name to avoid the difference in the mangled names.
+                "--crate-name=llvm_export",
                 "--emit=llvm-ir",
                 source_file,
                 "-o",
