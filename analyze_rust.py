@@ -6,32 +6,58 @@ import shutil
 import re
 import logging
 from dotenv import load_dotenv, find_dotenv
+from azure.identity import AzureCliCredential
 from openai import AzureOpenAI
 
 # Load environment variables from .env file
 env_file = find_dotenv(".env")
 load_dotenv(env_file)
 
-# Initialize the OpenAI client
-client = AzureOpenAI(
-    api_key=os.getenv("API_KEY"),
-    api_version=os.getenv("API_VERSION"),
-    azure_endpoint=os.getenv("AZURE_ENDPOINT")
+# Set up logging configuration to capture INFO and WARNING messages
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Set up logging configuration to capture INFO and WARNING messages
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+# Initialize Azure OpenAI client
+def initialize_openai_client():
+    try:
+        azure_endpoint = os.getenv("AZURE_ENDPOINT")
+        api_version = os.getenv("API_VERSION")
+        scope = os.getenv("SCOPE")
+        
+        if not azure_endpoint or not api_version or not scope:
+            logging.error("Missing required environment variables: AZURE_ENDPOINT, API_VERSION, or SCOPE.")
+            return None
+        
+        # Get Azure AD token using Azure CLI credentials
+        credential = AzureCliCredential()
+        access_token = credential.get_token(scope)
+        
+        client = AzureOpenAI(
+            azure_endpoint=azure_endpoint,
+            api_version=api_version,
+            azure_ad_token_provider=lambda: access_token.token
+        )
+        logging.info("Azure OpenAI client initialized successfully.")
+        return client
+    except Exception as e:
+        logging.error(f"Error initializing Azure OpenAI client: {e}", exc_info=True)
+        return None
 
-def get_bot_response(messages, model="gpt-4", temperature=0):
-    """Get a response from the language model, handling potential errors. 
-    Using temperature=0 by default to make the model more deterministic!"""
+# Function to get a response from the Azure OpenAI client
+def get_bot_response(client, messages, model="gpt-4-32k_0613", temperature=0):
+    """Retrieve a response from the language model."""
+    if not client:
+        logging.error("Azure OpenAI client is not initialized.")
+        return None
+    
     try:
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            max_tokens=1000,  
-            temperature=temperature, 
+            max_tokens=1000,
+            temperature=temperature,
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
@@ -195,7 +221,7 @@ def extract_source_code(text):
         logging.error("No code block found.")
         return ""
 
-def analyze_code_for_bugs(file_path):
+def analyze_code_for_bugs(client, file_path):
     """Analyze the Rust code for potential bugs using the LLM."""
     messages = []
 
@@ -214,16 +240,15 @@ def analyze_code_for_bugs(file_path):
         source_code = file.read().strip()
         if source_code:
             messages.append({"role": "user", "content": source_code})
-
             # Request analysis
-            analysis_report = get_bot_response(messages)
+            analysis_report = get_bot_response(client, messages)
             if analysis_report:
                 logging.info(f"Bot Analysis Report:\n{analysis_report}")
                 messages.append({"role": "assistant", "content": analysis_report})
                 return source_code, analysis_report
     return None
 
-def generate_comprarison_json_report(analysis_report, miri_output):
+def generate_comprarison_json_report(client, analysis_report, miri_output):
     """Generate a JSON report comparing LLM analysis with MIRI output."""
     messages = []
 
@@ -243,13 +268,13 @@ def generate_comprarison_json_report(analysis_report, miri_output):
         )
     })
 
-    bot_json_report = get_bot_response(messages)
+    bot_json_report = get_bot_response(client, messages)
     if bot_json_report:
         logging.info(f"Bot JSON Report:\n{bot_json_report}")
         return extract_json_report(bot_json_report)
     return None
 
-def request_fix_suggestions(analysis_report, source_code):
+def request_fix_suggestions(client, analysis_report, source_code):
     """
     Requests detailed code fix suggestions from a language model based on a bug report and source code.
     If the bug report includes code suggestions, they are highlighted separately to avoid redundant analysis.
@@ -270,7 +295,7 @@ def request_fix_suggestions(analysis_report, source_code):
     ]
 
     # Request fix suggestions from the language model
-    bot_fix_suggestions = get_bot_response(messages)
+    bot_fix_suggestions = get_bot_response(client, messages)
     if bot_fix_suggestions:
         logging.info(f"Received Fix Suggestions:\n{bot_fix_suggestions}")
         return bot_fix_suggestions
@@ -283,7 +308,7 @@ import os
 import re
 import logging
 
-def apply_fixes_to_code(source_code_path, source_code, fix_suggestions):
+def apply_fixes_to_code(client, source_code_path, source_code, fix_suggestions):
     """
     Apply the suggested fixes to the source code by rewriting it according to the model's recommendations.
     This step is crucial for improving the code based on the analysis.
@@ -303,7 +328,7 @@ def apply_fixes_to_code(source_code_path, source_code, fix_suggestions):
                  "If the code is sound and does not require fixing, return the text: THE CODE IS SOUND.")})
 
 
-    bot_fixed_code = get_bot_response(messages)
+    bot_fixed_code = get_bot_response(client, messages)
 
     # Check if the response contains the fixed code in markdown format
     if bot_fixed_code:
@@ -314,7 +339,9 @@ def apply_fixes_to_code(source_code_path, source_code, fix_suggestions):
 
         # Use regex to extract the code block in markdown format
         match = re.search(r'```(.*?)```', bot_fixed_code, re.DOTALL)
-        if match:
+        if not match:
+            return None
+        else:
             fixed_code = match.group(1).strip()  # Extract the code without the markdown
             # Create a new file path for the fixed code
             fixed_code_path = os.path.splitext(source_code_path)[0] + '_fixed' + os.path.splitext(source_code_path)[1]
@@ -325,7 +352,7 @@ def apply_fixes_to_code(source_code_path, source_code, fix_suggestions):
 
             logging.info(f"Fixed code saved to: {fixed_code_path}")
             return fixed_code, fixed_code_path
-
+        
     logging.warning("Something went wrong and the model returned nothing.")
     return None
 
@@ -362,7 +389,7 @@ def run_alive_tv(src_file, tgt_file, log_file):
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to run Alive-TV for {src_file} and {tgt_file}: {e}")
 
-def generate_json_report(analysis_report, fix_suggestions, fixed_code):
+def generate_json_report(client, analysis_report, fix_suggestions, fixed_code):
     """
     Generate a detailed JSON report that summarizes the analysis,
     suggestions for fixes, and the fixed code. This report can be useful for tracking changes.
@@ -385,7 +412,7 @@ def generate_json_report(analysis_report, fix_suggestions, fixed_code):
         )
     })
 
-    bot_json_report = get_bot_response(messages)
+    bot_json_report = get_bot_response(client, messages)
     if bot_json_report:
         logging.info(f"Bot JSON Report:\n{bot_json_report}")
         return extract_json_report(bot_json_report)
@@ -398,8 +425,10 @@ def analyze_and_fix_code(file_path):
         logging.error(f"File {file_path} does not exist.")
         return
 
+    openai_client = initialize_openai_client()
+
     # Step 1: Analyze the code for bugs using the LLM
-    source_code, analysis_report = analyze_code_for_bugs(file_path)
+    source_code, analysis_report = analyze_code_for_bugs(openai_client, file_path)
     if not source_code:
         logging.error("Source code is empty. Please provide the Rust source code for analysis.")
         return None
@@ -409,18 +438,22 @@ def analyze_and_fix_code(file_path):
 
     # Step 2: Request suggestions and apply the fixes
     # Get fix suggestions
-    fix_suggestions = request_fix_suggestions(analysis_report, source_code)
+    fix_suggestions = request_fix_suggestions(openai_client, analysis_report, source_code)
 
     if not fix_suggestions:
         logging.error("It looks like the code fix suggestions are empty. There may have been an issue, or perhaps the code is sound as it stands. Please review the steps to identify any possible issues.")
         return None
     
     # Apply the suggested fixes to the original code
-    fixed_code, fixed_code_path = apply_fixes_to_code(file_path, source_code, fix_suggestions)
+    result = apply_fixes_to_code(openai_client, file_path, source_code, fix_suggestions)
+    if result is None or result == "":
+        return None
+    
+    fixed_code, fixed_code_path = result
 
     # Step 3: Generate LLM report file
     # Generate a JSON report for the analysis and fixes
-    json_report = generate_json_report(analysis_report, fix_suggestions, fixed_code)
+    json_report = generate_json_report(openai_client, analysis_report, fix_suggestions, fixed_code)
 
     # Get the base name of the source code file without its extension
     base_file_name = os.path.splitext(file_path)[0]
@@ -439,7 +472,7 @@ def analyze_and_fix_code(file_path):
     terminate_process("miri")
 
     # Step 5: Generate a comparison JSON report
-    json_report = generate_comprarison_json_report(analysis_report, miri_output)
+    json_report = generate_comprarison_json_report(openai_client, analysis_report, miri_output)
     if json_report:
         report_file_path = f"{base_file_name}_report.json"
         save_json_report(json_report, report_file_path)
@@ -460,5 +493,3 @@ if __name__ == "__main__":
     file_path = os.path.abspath(input("Enter the path to the Rust source code file: "))
     logging.info(f"Absolute Rust source code path: {file_path}")
     analyze_and_fix_code(file_path)
-
-
