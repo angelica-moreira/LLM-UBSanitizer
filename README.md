@@ -84,4 +84,4 @@ To start the analysis, clone this repository and run the following command:
 python3 analyze_rust.py
 ```
 
-
+Obs.: Docker image is current stale you will need to do: pip install azure-identity azure-cli. The docker image will be update soon.
