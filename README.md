@@ -70,6 +70,11 @@ docker pull angelicamoreira/llmubsanitizer:v1
   ```bash
   docker run -itd --name=llmubsanitizer --privileged --net=host --ipc=host --gpus=all -w /root -v /mnt:/mnt angelicamoreira/llmubsanitizer:v1 bash
   ```
+### Execute the image
+
+```bash
+docker exec -it llmubsanitizer /bin/bash
+```
 
 ## Execution
 
