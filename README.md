@@ -63,12 +63,12 @@ docker pull angelicamoreira/llmubsanitizer:v1
 
 - **To mount your home directory** (allows access to files):
   ```bash
-  docker run -itd --name=llmubsanitizer --privileged --ipc=host --net=host --gpus=all -w /root --ulimit memlock=-1:-1 -v $HOME:$HOME angelicamoreira/llmubsanitizer bash
+  docker run -itd --name=llmubsanitizer --privileged --ipc=host --net=host --gpus=all -w /root --ulimit memlock=-1:-1 -v $HOME:$HOME angelicamoreira/llmubsanitizer:v1 bash
   ```
 
 - **For isolation** (without mounting your home directory):
   ```bash
-  docker run -itd --name=llmubsanitizer --privileged --net=host --ipc=host --gpus=all -w /root -v /mnt:/mnt angelicamoreira/llmubsanitizer bash
+  docker run -itd --name=llmubsanitizer --privileged --net=host --ipc=host --gpus=all -w /root -v /mnt:/mnt angelicamoreira/llmubsanitizer:v1 bash
   ```
 
 ## Execution
