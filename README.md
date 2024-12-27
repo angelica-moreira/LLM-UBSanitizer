@@ -32,7 +32,7 @@ Potential consequences of undefined behavior include:
 
 Through this project, we aim to leverage LLMs to identify and propose fixes for undefined behavior in Rust, thereby enhancing the reliability and security of Rust-based systems.
 
-### Cleanup Script
+## Cleanup Script
 
 The `cleanup_benchs.sh` script is provided to clean up results in a specified directory.
 
@@ -48,6 +48,56 @@ bash cleanup_benchs.sh [directory_to_be_cleaned]
 - **[Clang and Clang tools](https://clang.llvm.org/get_started.html)**
 - **[Alive2](https://github.com/AliveToolkit/alive2#building-alive2)**
 - **[MIRI](https://doc.rust-lang.org/nightly/unstable-book/miri.html)** (for Rust UB analysis)
+
+
+## Setting Up the `.env` File
+
+To properly configure the environment for this application, you need to create a `.env` file in the root directory of your project. This file should contain the following key-value pairs:
+
+```bash
+API_TYPE="azure"
+AZURE_ENDPOINT="your endpoint url"
+API_KEY="your azure access token"
+API_VERSION="2024-10-21"
+SCOPE="api permissions"
+GITHUB_TOKEN="your github personal access token"
+MODEL="gpt-4o_2024-05-13"
+GITHUB_ENDPOINT="https://models.inference.ai.azure.com"
+MODEL_NAME="gpt-4o"
+```
+
+Explanation of the Variables
+
+1. AZURE_ENDPOINT
+- Purpose: This is the URL of your Azure endpoint where API requests are sent. It specifies the location of the Azure resources your application interacts with.
+- Example: https://myazureapi.cognitiveservices.azure.com
+- Ensure you replace "your endpoint url" with the actual endpoint provided by Azure.
+
+2. API_KEY
+- Purpose: This is your Azure API access token, used to authenticate requests to the Azure services.
+- Example: f2h3a8j29... (a long string of characters)
+- Obtain this token from your Azure portal under the resource's "Keys and Endpoint" section.
+
+3. GITHUB_TOKEN
+- Purpose: This is a GitHub personal access token, required if your application interacts with GitHub APIs. It allows secure access to repositories and other GitHub features.
+- Example: ghp_ab12cd34ef56gh78ij90klmnopqrstu
+- Create this token via GitHub by navigating to Settings > Developer Settings > Personal Access Tokens. Make sure to grant the required scopes (e.g., repo or read:packages) based on your application's needs.
+
+Other Variables
+- API_TYPE: Specifies the type of API used, in this case, "azure".
+- API_VERSION: Indicates the version of the API being used, ensuring compatibility.
+- SCOPE: Specifies the scope of the API request, often related to permissions.
+- MODEL: Defines the specific model and version to be used (e.g., gpt-4o_2024-05-13).
+- GITHUB_ENDPOINT: URL of the GitHub API endpoint being accessed.
+- MODEL_NAME: A shorthand identifier for the model being utilized (e.g., gpt-4o).
+
+Important Notes
+- File Security: The `.env` file is currently not committed to version control since it is added to `.gitignore` file.
+- Environment Setup: After creating the `.env` file, your application will automatically load these configurations at runtime, provided you use an environment variable library (e.g., dotenv for Node.js or Python).
+
+By setting up this file correctly, you'll ensure seamless integration and proper functionality with the analyze_rust.py script.
+
+
 
 ## Docker Instructions
 
