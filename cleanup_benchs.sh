@@ -16,7 +16,7 @@ if [ ! -d "$DIRECTORY" ]; then
 fi
 
 # Find and delete .log and .ll files
-echo "Deleting .log and .ll files in '$DIRECTORY' and its subdirectories..."
+echo "Deleting .log, .json and .ll files in '$DIRECTORY' and its subdirectories..."
 find "$DIRECTORY" -type f \( -name "*.log" -o -name "*.ll" -o -name "*.json" \) -exec rm -f {} +
 
 echo "Cleanup completed."
