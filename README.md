@@ -56,19 +56,19 @@ You can pull the Docker image and run it as follows:
 ### Pull the Docker Image
 
 ```bash
-docker pull angelicamoreira/llmubsanitizer:v1
+docker pull angelicamoreira/llmubsanitizer:v2
 ```
 
 ### Running the Docker Container
 
 - **To mount your home directory** (allows access to files):
   ```bash
-  docker run -itd --name=llmubsanitizer --privileged --ipc=host --net=host --gpus=all -w /root --ulimit memlock=-1:-1 -v $HOME:$HOME angelicamoreira/llmubsanitizer:v1 bash
+  docker run -itd --name=llmubsanitizer --privileged --ipc=host --net=host --gpus=all -w /root --ulimit memlock=-1:-1 -v $HOME:$HOME angelicamoreira/llmubsanitizer:v2 bash
   ```
 
 - **For isolation** (without mounting your home directory):
   ```bash
-  docker run -itd --name=llmubsanitizer --privileged --net=host --ipc=host --gpus=all -w /root -v /mnt:/mnt angelicamoreira/llmubsanitizer:v1 bash
+  docker run -itd --name=llmubsanitizer --privileged --net=host --ipc=host --gpus=all -w /root -v /mnt:/mnt angelicamoreira/llmubsanitizer:v2 bash
   ```
 ### Execute the image
 
@@ -83,5 +83,3 @@ To start the analysis, clone this repository and run the following command:
 ```bash
 python3 analyze_rust.py
 ```
-
-Obs.: Docker image is current stale you will need to do: pip install azure-identity azure-cli. The docker image will be update soon.
