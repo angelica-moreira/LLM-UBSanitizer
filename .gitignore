@@ -1,0 +1,29 @@
+# Environment variables
+.env
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.venv
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous
+*.log
+*.ll
+*.json
+*_fixed.rs
