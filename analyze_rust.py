@@ -6,8 +6,8 @@ import shutil
 import re
 import logging
 from dotenv import load_dotenv, find_dotenv
-from azure.identity import AzureCliCredential
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
+from azure.identity import AzureCliCredential, get_bearer_token_provider
 
 # Load environment variables from .env file
 env_file = find_dotenv(".env")
@@ -25,9 +25,10 @@ def initialize_openai_client():
         azure_endpoint = os.getenv("AZURE_ENDPOINT")
         api_version = os.getenv("API_VERSION")
         scope = os.getenv("SCOPE")
+        model_name = os.environ["MODEL_NAME"]
         
-        if not azure_endpoint or not api_version or not scope:
-            logging.error("Missing required environment variables: AZURE_ENDPOINT, API_VERSION, or SCOPE.")
+        if not azure_endpoint or not api_version or not scope or not model_name:
+            logging.error("Missing required environment variables: AZURE_ENDPOINT, API_VERSION, SCOPE or MODEL.")
             return None
         
         # Get Azure AD token using Azure CLI credentials
@@ -40,13 +41,36 @@ def initialize_openai_client():
             azure_ad_token_provider=lambda: access_token.token
         )
         logging.info("Azure OpenAI client initialized successfully.")
-        return client
+        return client, model_name
     except Exception as e:
         logging.error(f"Error initializing Azure OpenAI client: {e}", exc_info=True)
         return None
 
+def initialize_github_openai_client():
+    try:
+        # Environment variable validation
+        token = os.environ["GITHUB_TOKEN"]
+        endpoint = os.environ["GITHUB_ENDPOINT"]
+        model_name = os.environ["MODEL_NAME"]
+
+        if not token or not endpoint or not model_name:
+            logging.error("Missing required environment variables: GITHUB_TOKEN, GITHUB_ENDPOINT, or MODEL_NAME.")
+            return None
+      
+        client = OpenAI(
+            base_url=endpoint,
+            api_key=token,
+        ) 
+
+        logging.info("GitHub OpenAI client initialized successfully.")
+        return client, model_name
+
+    except Exception as e:
+        logging.error(f"Error initializing Azure GitHub client: {e}", exc_info=True)
+        return None
+
 # Function to get a response from the Azure OpenAI client
-def get_bot_response(client, messages, model="gpt-4-32k_0613", temperature=0):
+def get_bot_response(client, messages, model, temperature=0):
     """Retrieve a response from the language model."""
     if not client:
         logging.error("Azure OpenAI client is not initialized.")
@@ -128,9 +152,11 @@ def copy_source_to_project(source_file, cargo_dir):
 def run_command(command):
     """Execute a shell command and log the output."""
     with open('stdout.log', 'a') as stdout_file, open('stderr.log', 'a') as stderr_file:
+        logging.info(f"Running command: {command}")
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         for stdout_line in iter(process.stdout.readline, ""):
+            logging.info("STD OUT LINE")
             logging.info(stdout_line.strip())
             stdout_file.write(stdout_line)
         process.stdout.close()
@@ -144,20 +170,38 @@ def run_command(command):
 
 def run_miri_on_code(cargo_dir, base_file_name):
     """Run MIRI on the created Cargo project."""
-    process_code, process = run_command(["cargo", "+nightly", "miri", "run"])
-    if process_code != 0:
-        logging.info("MIRI found error(s) in the code, check {} and {} for more details.".format(f"{base_file_name}_stdout.log", f"{base_file_name}_stderr.log"))
-        return process
-    return None
+    process = None
+    try:
+        process = subprocess.Popen(
+            ["cargo", "+nightly", "miri", "run"],
+            cwd=cargo_dir,  # Set the working directory
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        # Wait for the process to complete
+        stdout, stderr = process.communicate()
+        log_file = f"{base_file_name}_miri_output.log"
+        stderr_log_file = f"{base_file_name}_stderr.log"
+        # Write the logs to files
+        with open(log_file, "w") as stdout_log:
+            stdout_log.write(stdout)
+        with open(stderr_log_file, "w") as stderr_log:
+            stderr_log.write(stderr)
 
-def rename_miri_output(source_file, base_file_name):
-    """Rename the log files to include the source file name."""
-    log_file = f"{base_file_name}_miri_output.log"
-    stderr_log_file = f"{base_file_name}_stderr.log"
-    shutil.move('stdout.log', log_file)
-    shutil.move('stderr.log', stderr_log_file)
-    logging.info(f"MIRI output saved to {stderr_log_file}.")
-    return stderr_log_file
+        if process.returncode != 0:
+            logging.info(
+                "MIRI found error(s) in the code, check {} and {} for more details.".format(
+                    log_file, stderr_log_file
+                )
+            )
+    except Exception as e:
+        logging.error(f"Error running MIRI: {e}")
+        if process is not None:
+            process.terminate()
+        exit(1)
+    return process, stderr_log_file
 
 def run_miri(source_file, base_file_name):
     """Creates a temporary cargo project, runs MIRI, and manages logs."""
@@ -167,11 +211,8 @@ def run_miri(source_file, base_file_name):
     try:
         cargo_dir = create_cargo_project(temp_dir)
         copy_source_to_project(source_file, cargo_dir)
-
         os.chdir(cargo_dir)
-
-        process = run_miri_on_code(cargo_dir, base_file_name)
-        stderr_log_file = rename_miri_output(source_file, base_file_name)
+        process, stderr_log_file = run_miri_on_code(cargo_dir, base_file_name)
 
         # Read the contents of the stderr log file into miri_output
         with open(stderr_log_file, 'r') as log_file:
@@ -181,7 +222,7 @@ def run_miri(source_file, base_file_name):
 
     except Exception as e:
         logging.error(f"An error occurred while running MIRI: {e}", exc_info=True)
-
+        exit(1)
     finally:
         os.chdir("..")
         shutil.rmtree(temp_dir)
@@ -221,7 +262,7 @@ def extract_source_code(text):
         logging.error("No code block found.")
         return ""
 
-def analyze_code_for_bugs(client, file_path):
+def analyze_code_for_bugs(client, model, file_path):
     """Analyze the Rust code for potential bugs using the LLM."""
     messages = []
 
@@ -241,14 +282,14 @@ def analyze_code_for_bugs(client, file_path):
         if source_code:
             messages.append({"role": "user", "content": source_code})
             # Request analysis
-            analysis_report = get_bot_response(client, messages)
+            analysis_report = get_bot_response(client, messages, model)
             if analysis_report:
                 logging.info(f"Bot Analysis Report:\n{analysis_report}")
                 messages.append({"role": "assistant", "content": analysis_report})
                 return source_code, analysis_report
     return None
 
-def generate_comprarison_json_report(client, analysis_report, miri_output):
+def generate_comprarison_json_report(client, model, analysis_report, miri_output):
     """Generate a JSON report comparing LLM analysis with MIRI output."""
     messages = []
 
@@ -268,13 +309,13 @@ def generate_comprarison_json_report(client, analysis_report, miri_output):
         )
     })
 
-    bot_json_report = get_bot_response(client, messages)
+    bot_json_report = get_bot_response(client, messages, model)
     if bot_json_report:
         logging.info(f"Bot JSON Report:\n{bot_json_report}")
         return extract_json_report(bot_json_report)
     return None
 
-def request_fix_suggestions(client, analysis_report, source_code):
+def request_fix_suggestions(client, model, analysis_report, source_code):
     """
     Requests detailed code fix suggestions from a language model based on a bug report and source code.
     If the bug report includes code suggestions, they are highlighted separately to avoid redundant analysis.
@@ -295,7 +336,7 @@ def request_fix_suggestions(client, analysis_report, source_code):
     ]
 
     # Request fix suggestions from the language model
-    bot_fix_suggestions = get_bot_response(client, messages)
+    bot_fix_suggestions = get_bot_response(client, messages, model)
     if bot_fix_suggestions:
         logging.info(f"Received Fix Suggestions:\n{bot_fix_suggestions}")
         return bot_fix_suggestions
@@ -308,7 +349,7 @@ import os
 import re
 import logging
 
-def apply_fixes_to_code(client, source_code_path, source_code, fix_suggestions):
+def apply_fixes_to_code(client, model, source_code_path, source_code, fix_suggestions):
     """
     Apply the suggested fixes to the source code by rewriting it according to the model's recommendations.
     This step is crucial for improving the code based on the analysis.
@@ -328,7 +369,7 @@ def apply_fixes_to_code(client, source_code_path, source_code, fix_suggestions):
                  "If the code is sound and does not require fixing, return the text: THE CODE IS SOUND.")})
 
 
-    bot_fixed_code = get_bot_response(client, messages)
+    bot_fixed_code = get_bot_response(client, messages, model)
 
     # Check if the response contains the fixed code in markdown format
     if bot_fixed_code:
@@ -389,7 +430,7 @@ def run_alive_tv(src_file, tgt_file, log_file):
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to run Alive-TV for {src_file} and {tgt_file}: {e}")
 
-def generate_json_report(client, analysis_report, fix_suggestions, fixed_code):
+def generate_json_report(client, model, analysis_report, fix_suggestions, fixed_code):
     """
     Generate a detailed JSON report that summarizes the analysis,
     suggestions for fixes, and the fixed code. This report can be useful for tracking changes.
@@ -412,23 +453,31 @@ def generate_json_report(client, analysis_report, fix_suggestions, fixed_code):
         )
     })
 
-    bot_json_report = get_bot_response(client, messages)
+    bot_json_report = get_bot_response(client, messages, model)
     if bot_json_report:
         logging.info(f"Bot JSON Report:\n{bot_json_report}")
         return extract_json_report(bot_json_report)
     return None
 
 
-def analyze_and_fix_code(file_path):
+def analyze_and_fix_code(file_path, endpoint="1"):
     """Main function to analyze and fix the Rust code."""
     if not os.path.exists(file_path):
         logging.error(f"File {file_path} does not exist.")
-        return
+        return None
 
-    openai_client = initialize_openai_client()
-
+    openai_client = None
+    model = None
+    if endpoint == "1":
+        openai_client, model = initialize_github_openai_client()
+    elif endpoint == "2":
+        openai_client, model = initialize_openai_client()
+    else:
+        logging.error(f"Endpoint connection option {endpoint} does not exist.")
+        return None
+        
     # Step 1: Analyze the code for bugs using the LLM
-    source_code, analysis_report = analyze_code_for_bugs(openai_client, file_path)
+    source_code, analysis_report = analyze_code_for_bugs(openai_client, model, file_path)
     if not source_code:
         logging.error("Source code is empty. Please provide the Rust source code for analysis.")
         return None
@@ -438,14 +487,14 @@ def analyze_and_fix_code(file_path):
 
     # Step 2: Request suggestions and apply the fixes
     # Get fix suggestions
-    fix_suggestions = request_fix_suggestions(openai_client, analysis_report, source_code)
+    fix_suggestions = request_fix_suggestions(openai_client, model, analysis_report, source_code)
 
     if not fix_suggestions:
         logging.error("It looks like the code fix suggestions are empty. There may have been an issue, or perhaps the code is sound as it stands. Please review the steps to identify any possible issues.")
         return None
     
     # Apply the suggested fixes to the original code
-    result = apply_fixes_to_code(openai_client, file_path, source_code, fix_suggestions)
+    result = apply_fixes_to_code(openai_client, model, file_path, source_code, fix_suggestions)
     if result is None or result == "":
         return None
     
@@ -453,7 +502,7 @@ def analyze_and_fix_code(file_path):
 
     # Step 3: Generate LLM report file
     # Generate a JSON report for the analysis and fixes
-    json_report = generate_json_report(openai_client, analysis_report, fix_suggestions, fixed_code)
+    json_report = generate_json_report(openai_client, model, analysis_report, fix_suggestions, fixed_code)
 
     # Get the base name of the source code file without its extension
     base_file_name = os.path.splitext(file_path)[0]
@@ -468,11 +517,11 @@ def analyze_and_fix_code(file_path):
     miri_output = run_miri(file_path, base_file_name)
     if not miri_output:
         logging.error("No MIRI report generated.")
-        return
+        return None
     terminate_process("miri")
 
     # Step 5: Generate a comparison JSON report
-    json_report = generate_comprarison_json_report(openai_client, analysis_report, miri_output)
+    json_report = generate_comprarison_json_report(openai_client, model, analysis_report, miri_output)
     if json_report:
         report_file_path = f"{base_file_name}_report.json"
         save_json_report(json_report, report_file_path)
